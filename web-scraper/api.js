@@ -1,8 +1,11 @@
 const fetch = require('node-fetch');
 const fs = require('fs');
 
+// Everything on this file is using the Warframe Market API.
+// Their docs are here: https://warframe.market/api_docs
+
 /**
- * Returns the name of each item that is stored on the Warframe Market database.
+ * Returns the name of each item that is stored on the Warframe Market API database.
  * @param {Object} saveFile  Save file settings.
  * @param {Boolean} saveFile.is_save_file  Boolean to decide saving results to a file or not.
  * @param {String} saveFile.file_name  File name to save the results to.
@@ -27,7 +30,8 @@ async function getAllItemsUrlName(
 }
 
 /**
- * Get all the orders for this specific item on a specific platform.
+ * Get all the WTB (Want to Buy) orders from Warframe Market API for this specific item on a specific platform.
+ * The orders must be visible and the player should NOT be offline.
  * @param {String} item  Name of the item to be searched.
  * @param {String} platform  Game platform from where the orders are made.
  * @param {Number} min_plat_limit Shows orders that have a platinum value of this or more.
@@ -36,18 +40,18 @@ async function getAllItemsUrlName(
  * @param {String} saveFile.file_name  File name to save the results to.
  * @returns {Array}  Array of all the orders.
  */
-async function getItemOrders(
+async function getWTBItemOrders(
 	item,
 	platform,
 	min_plat_limit,
 	saveFile = {
 		is_save_file: false,
-		file_name: 'all_items_url_name.json',
+		file_name: `${item}_orders.json`,
 	}
 ) {
 	const apiURL = `https://api.warframe.market/v1/items/${item}/orders`;
 
-	let es = await fetch(apiURL, { method: 'GET' });
+	let res = await fetch(apiURL, { method: 'GET' });
 	let obj = await res.json();
 
 	let result = obj.payload.orders
@@ -75,14 +79,20 @@ async function getItemOrders(
 }
 
 /**
- * Find the tags of the item parameter using the Warframe API and return the relevant keys from the JSON response.
+ * Find the tags of the item parameter using the Warframe Market API and return the relevant keys from the JSON response.
  * @param {String} item  Name of the item to be searched.
  * @param {Object} saveFile  Save file settings.
  * @param {Boolean} saveFile.is_save_file  Boolean to decide saving results to a file or not.
  * @param {String} saveFile.file_name  File name to save the results to.
  * @returns {Object}  Object which contains the details of the item searched.
  */
-async function getItemTags(item) {
+async function getItemTags(
+	item,
+	saveFile = {
+		is_save_file: false,
+		file_name: `${item}_tags.json`,
+	}
+) {
 	const apiURL = `https://api.warframe.market/v1/items/${item}`;
 
 	let res = await fetch(apiURL, { method: 'GET' });
@@ -104,103 +114,100 @@ async function getItemTags(item) {
 	return result;
 }
 
-async function processData(sorted_items, file_name) {
+/**
+ * Reads data from file and return it parsed by JSON.
+ * @param {String} file_name  File name to read data from.
+ * @returns  JSON parsed data obtained from the file.
+ */
+function readFromFileJSON(file_name) {
+	let result = fs.readFileSync(file_name, { encoding: 'utf-8' });
+	return JSON.parse(result);
+}
+
+/**
+ * Custom sorting function to compare the max price of orders.
+ * @param {Object} a First object to be compared
+ * @param {Object} b Second object to be compared
+ * @returns
+ */
+function compare(a, b) {
+	if (a.max < b.max) return -1;
+	if (a.max > b.max) return 1;
+	return 0;
+}
+
+/**
+ * Gets every item's orders from Warframe Market API
+ * @param {Object} saveFile  Save file settings.
+ * @param {Boolean} saveFile.is_save_file  Boolean to decide saving results to a file or not.
+ * @param {String} saveFile.file_name  File name to save the results to.
+ * @param {Boolean} isSorted Boolean to decide to sort the results or not
+ */
+async function getAllItemsOrders(
+	saveFile = {
+		is_save_file: false,
+		file_name: `${item}_tags.json`,
+	},
+	isSorted = false
+) {
 	let result = [];
+	let all_items_market_data = readFromFileJSON('all_items_market.json');
 
-	// all_items = await getAllItemsUrlName();
-	// console.log('Getting all items.');
-
-	// for (let i = 0; i < all_items.length; i++) {
-	// 	data = await getItemTags(all_items[i]);
-	// 	if (data.length > 0) {
-	// 		// console.log(data[0]);
-	// 		sorted_items.push(data[0]);
-	// 	}
-	// }
-
-	sorted_items = fs
-		.readFileSync('all_items_market.json', { encoding: 'utf-8' })
-		.toString();
-
-	sorted_items = JSON.parse(sorted_items);
-
-	for (let i = 0; i < sorted_items.length; i++) {
-		let name = sorted_items[i];
-		data = '';
+	for (let name of all_items_market_data) {
+		let orders = '';
 
 		try {
-			data = await getItemOrders(name, 'pc', 15);
-		} catch (err) {
-			try {
-				data = await getItemOrders(name + '_set', 'pc', 15);
-				name += '_set';
-			} catch (err) {
-				try {
-					data = await getItemOrders(name + '_blueprint', 'pc', 15);
-					name += '_blueprint';
-				} catch (err) {}
-			}
-		}
+			orders = await getWTBItemOrders(name, 'pc', 15);
+		} catch (err) {}
 
-		if (data.length > 0) {
-			// console.log(`Getting item: ${name}`);
-
+		if (orders.length > 0) {
 			let sum = 0;
 			let avg = 0;
 			let min = 100000;
 			let max = 0;
 
-			for (let j = 0; j < data.length; j++) {
-				price = data[j].platinum;
+			for (let order of orders) {
+				price = order.platinum;
 				sum += price;
 				if (price < min) min = price;
 				if (price > max) max = price;
 			}
 
-			avg = sum / data.length;
+			avg = sum / orders.length;
 			result.push({
 				id: name,
-				data: data,
+				orders: orders,
 				max: max,
 				avg: avg,
 				min: min,
 			});
 		}
+
+		console.log(name);
+		console.log(orders);
 	}
 
-	jsonData = JSON.stringify(result);
-	fs.writeFile(`${file_name}.json`, jsonData, function (err) {
-		if (err) {
-			console.log(err);
-		}
-	});
-}
-
-// processData([], 'all_items_orders');
-
-async function test() {
-	let data = fs.readFileSync('all_items_orders.json', { encoding: 'utf-8' });
-	data = JSON.parse(data);
-
-	data = data.sort(compare);
-	// console.log(data);
-
-	fs.writeFileSync('all_items_market_sorted_dec.json', JSON.stringify(data));
-}
-function compare(a, b) {
-	if (a.max < b.max) {
-		return 1;
+	// Sorting the data in order from highest to lowest price (platinum)
+	if (isSorted) {
+		let sorted_result = result.sort(compare).reverse();
+		saveFile.file_name = saveFile.file_name += '_sorted_dec';
+		result = sorted_result;
 	}
-	if (a.max > b.max) {
-		return -1;
+
+	if (saveFile.is_save_file) {
+		fs.writeFileSync(`${saveFile.file_name}.json`, JSON.stringify(result));
 	}
-	return 0;
+	// return result;
 }
-test();
+
+getAllItemsOrders(
+	{ is_save_file: true, file_name: 'all_items_orders' },
+	(isSorted = true)
+);
 
 module.exports = {
 	getAllItemsUrlName,
 	getItemTags,
-	getItemOrders,
-	processData,
+	getWTBItemOrders,
+	getAllItemsOrders,
 };
