@@ -1,0 +1,9 @@
+/virt-env
+/web-scraper/db_config.ini
+/web-scraper/.env
+/web-scraper/node_modules
+/web-scraper/update_manga_list.js
+/web-scraper/update.js
+/web-scraper/test.js
+/items
+/orders
