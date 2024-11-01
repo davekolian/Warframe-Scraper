@@ -125,18 +125,6 @@ function readFromFileJSON(file_name) {
 }
 
 /**
- * Custom sorting function to compare the max price of orders.
- * @param {Object} a First object to be compared
- * @param {Object} b Second object to be compared
- * @returns
- */
-function compare(a, b) {
-	if (a.max < b.max) return -1;
-	if (a.max > b.max) return 1;
-	return 0;
-}
-
-/**
  * Gets every item's orders from Warframe Market API
  * @param {Object} saveFile  Save file settings.
  * @param {Boolean} saveFile.is_save_file  Boolean to decide saving results to a file or not.
@@ -189,7 +177,7 @@ async function getAllItemsOrders(
 
 	// Sorting the data in order from highest to lowest price (platinum)
 	if (isSorted) {
-		let sorted_result = result.sort(compare).reverse();
+		let sorted_result = result.sort((a, b) => (a.max > b.max ? -1 : 1)).reverse();
 		saveFile.file_name = saveFile.file_name += '_sorted_dec';
 		result = sorted_result;
 	}
