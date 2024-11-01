@@ -1,6 +1,10 @@
 const fetch = require('node-fetch');
 const fs = require('fs');
 
+//#####################################################################
+//#                All rights reserved to davekolian                  #
+//#####################################################################
+//
 // Everything on this file is using the Warframe Market API.
 // Their docs are here: https://warframe.market/api_docs
 
@@ -106,7 +110,7 @@ async function getItemTags(
 			mod_max_rank: item.mod_max_rank,
 			link: item.en.wiki_link,
 		};
-	});
+	})[0];
 
 	if (saveFile.is_save_file) {
 		fs.writeFileSync(saveFile.file_name, JSON.stringify(result));
@@ -170,14 +174,13 @@ async function getAllItemsOrders(
 				min: min,
 			});
 		}
-
-		console.log(name);
-		console.log(orders);
 	}
 
 	// Sorting the data in order from highest to lowest price (platinum)
 	if (isSorted) {
-		let sorted_result = result.sort((a, b) => (a.max > b.max ? -1 : 1)).reverse();
+		let sorted_result = result
+			.sort((a, b) => (a.max > b.max ? -1 : 1))
+			.reverse();
 		saveFile.file_name = saveFile.file_name += '_sorted_dec';
 		result = sorted_result;
 	}
@@ -188,14 +191,21 @@ async function getAllItemsOrders(
 	// return result;
 }
 
-getAllItemsOrders(
-	{ is_save_file: true, file_name: 'all_items_orders' },
-	(isSorted = true)
-);
+// getAllItemsOrders(
+// 	{ is_save_file: true, file_name: 'all_items_orders' },
+// 	(isSorted = true)
+// );
 
 module.exports = {
 	getAllItemsUrlName,
 	getItemTags,
 	getWTBItemOrders,
 	getAllItemsOrders,
+	readFromFileJSON,
 };
+
+// Unit Testing
+// const saveFile = { is_save_file: true, file_name: 'test.json' };
+// getAllItemsUrlName({ is_save_file: true, file_name: 'test.json' });
+// getItemTags('abating_link', { is_save_file: true, file_name: 'test2.json' });
+// getWTBItemOrders('arcane_energize', 'pc', 15, { is_save_file: true, file_name: 'test3.json' });
