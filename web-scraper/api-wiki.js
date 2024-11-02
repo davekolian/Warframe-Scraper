@@ -1,45 +1,15 @@
-// const fetch = require('node-fetch');
-// const HTMLParser = require('node-html-parser');
-
-// async function wiki() {
-// 	let url = 'https://warframe.fandom.com/api.php?';
-
-// 	params = {
-// 		action: 'parse',
-// 		page: 'Entrati',
-// 		format: 'json',
-// 	};
-
-// 	url += new URLSearchParams(params).toString();
-
-// 	let res = await fetch(url);
-// 	let obj = await res.json();
-// 	let data = obj.parse.links.map((item) => item['*']);
-// 	let idx = data.indexOf('Cedo');
-// 	console.log(idx);
-
-// 	// let html = HTMLParser.parse(data);
-
-// 	// console.log(html);
-// 	// console.log(data.slice(idx, data.length - 1));
-// }
-
-// wiki();
-
-////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////
-
 //#####################################################################
 //#                All rights reserved to davekolian                  #
 //#####################################################################
+//
+// This application is mainly used to get data from the Warframe Fandom website found here: https://warframe.fandom.com/wiki/WARFRAME_Wiki.
+// The two key functions are: 1) to get all the names of the Syndicate items and their platinum values to see where to spend Standing one
+//                            2) to get all the items from Varzia relics to see where to spend Aya on.
 
-require('dotenv').config();
-const express = require('express');
-var fs = require('fs');
+const fs = require('fs');
 const api = require('./api');
+
+// All Puppeteer imports
 const puppeteer = require('puppeteer-extra');
 // add stealth plugin and use defaults (all evasion techniques)
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
@@ -48,17 +18,74 @@ stealth.enabledEvasions.delete('chrome.runtime');
 stealth.enabledEvasions.delete('iframe.contentWindow');
 puppeteer.use(stealth);
 
-let new_chapters = [];
-let record_ids = 0;
+const allSyndicateNamesList = [
+	'Steel Meridian',
+	'Arbiters of Hexis',
+	'Cephalon Suda',
+	'The Perrin Sequence',
+	'Red Veil',
+	'New Loka',
+	'Conclave',
+	'Cephalon Simaris',
+	'Ostron',
+	'The Quills',
+	'Solaris United',
+	'Vox Solaris (Syndicate)',
+	'Ventkids',
+	'Entrati',
+	'Necraloid',
+	'The Holdfasts',
+	'Cavia',
+	"Kahl's Garrison",
+	'Operational Supply',
+	'Nightwave',
+];
 
-async function mainScrapers(objs, func) {
+/**
+ * Function to sleep for 'seconds' number of seconds.
+ * @param {Number} seconds  Time in seconds to sleep
+ */
+async function waitForSeconds(seconds) {
+	await new Promise((r) => setTimeout(r, seconds * 1000));
+}
+
+/**
+ * Function to make the page load faster by interrupting the loading of Images, JS Script, CSS and fonts.
+ * @param {any} page Puppeteer Page
+ */
+async function pageInterception(page) {
+	await page.setRequestInterception(true);
+
+	page.on('request', (req) => {
+		if (
+			req.resourceType() == 'stylesheet' ||
+			req.resourceType() == 'font' ||
+			req.resourceType() == 'image' ||
+			req.resourceType() == 'script'
+		) {
+			req.abort();
+		} else {
+			req.continue();
+		}
+	});
+}
+
+/**
+ * Function which opens the Syndicate Wiki page of each Syndicate to get it's items.
+ * @param {Array} list_of_syndicates List of all syndicates as strings
+ */
+async function getAllSyndicateItems(
+	list_of_syndicates,
+	save_each_file = false
+) {
 	let browser = await puppeteer.launch({ headless: false });
 
-	for (let obj of objs) {
-		let url = `https://warframe.fandom.com/wiki/${obj}`;
+	for (let syndicate_name of list_of_syndicates) {
+		let url = `https://warframe.fandom.com/wiki/${syndicate_name}`;
 		let page = await browser.newPage();
 
-		await func(page, obj, url);
+		console.log(syndicate_name);
+		await getSyndicateItemsFromWiki(page, syndicate_name, url, save_each_file);
 
 		await page.close();
 	}
@@ -66,82 +93,59 @@ async function mainScrapers(objs, func) {
 	await browser.close();
 }
 
-async function mainScrapers2(objs, func) {
-	let browser = await puppeteer.launch({ headless: false });
-	let result = [];
-
-	for (let obj of objs) {
-		let url = `https://warframe.fandom.com/wiki/${obj}`;
-		let page = await browser.newPage();
-
-		let arr = await func(page, obj, url);
-		result = result.concat(arr);
-
-		await page.close();
-	}
-
-	await browser.close();
-	console.log(result);
-
-	await readingSyndicateFilesOrders2(result, 'Varzia_relics.json');
-}
-
-async function getSyndicateItemsFromMarket(page, obj, url) {
+/**
+ * Function to zoom out the page contents to load more content and forced open the tables.
+ * @param {any} page  Active Puppeeter Page which has opened the Wiki page.
+ * @param {String} syndicate_name Name of the Syndicate to scrape.
+ * @param {String} url  URL of the page to visit.
+ * @param {Boolean} is_save_file  Boolean to decide saving results to a file or not.
+ * @returns {Array}  List of all items as an Object from that syndicate and the item's standings.
+ */
+async function getSyndicateItemsFromWiki(
+	page,
+	syndicate_name,
+	url,
+	is_save_file = false
+) {
 	try {
+		await pageInterception(page);
 		await page.goto(url, { timeout: 0 });
-
-		console.log('Zooming out');
-		let tmp = await page.evaluate(() => {
-			document.body.style.zoom = 0.5;
-			window.scrollBy(0, window.innerHeight);
-
-			[...document.querySelectorAll('div')].map(
-				(e) => (e.style.display = 'flow-root')
-			);
-		});
-		console.log('Getting data');
 
 		let items = await page.evaluate(() => {
 			let tables = document.getElementsByClassName('mw-collapsible');
 			let result = [];
 
-			for (let i = 0; i < tables.length; i++) {
+			for (let table of tables) {
 				try {
-					let parentNode =
-						tables[i].getElementsByClassName('flex-container')[0];
-					for (let j = 0; j < parentNode.children.length; j++) {
+					let parentNode = table.getElementsByClassName('flex-container')[0];
+					for (let child of parentNode.children) {
 						let name = '';
-						let standing = '0';
-						let childNode = parentNode.children[j].getElementsByTagName('span');
+						let standing = 0;
+						let childNode = child.getElementsByTagName('span');
 						try {
-							name = childNode[1].textContent;
+							name = childNode[1].textContent.replace('Blueprint', '');
 
-							name = name.replace(' Blueprint', '');
 							idx = name.indexOf('(');
-							if (idx != -1) {
-								name = name.slice(0, idx);
-							}
+							if (idx != -1) name = name.slice(0, idx);
+
 							idx = name.indexOf('X');
-							if (idx != -1) {
-								name = name.slice(0, idx);
-							}
-							name = name.trim();
+							if (idx != -1) name = name.slice(0, idx);
+
+							name = name.trim().replaceAll(' ', '_').toLowerCase();
 						} catch (err) {}
 
 						try {
 							standing = childNode[0].textContent;
+							standing = Number(standing.replace('\n', '').replace(',', ''));
 						} catch (err) {}
 
-						standing = Number(standing.replace('\n', '').replace(',', ''));
 						if (
-							!(
-								isNaN(standing) ||
-								standing == null ||
-								name == '' ||
-								standing == 0
-							)
+							!isNaN(standing) &&
+							standing != null &&
+							standing > 0 &&
+							name != ''
 						) {
-							result.push([name, standing]);
+							result.push({ name: name, standing: standing });
 						}
 					}
 				} catch (err) {}
@@ -150,72 +154,66 @@ async function getSyndicateItemsFromMarket(page, obj, url) {
 			return result;
 		});
 
-		console.log(items);
-		jsonData = JSON.stringify(items);
-		fs.writeFile(`./items/${obj}_items.json`, jsonData, function (err) {
-			if (err) {
-				console.log(err);
-			}
-		});
-
-		// await new Promise((r) => setTimeout(r, 100000));
-		console.log('Done reading above');
-		// return prices;
+		if (is_save_file)
+			fs.writeFileSync(
+				`./items/${syndicate_name}_items.json`,
+				JSON.stringify(items)
+			);
+		return items;
 	} catch (error) {
 		console.log('Error reading this page');
 		console.log(error);
 	}
 }
 
-async function readingSyndicateFilesOrders(synd) {
-	for (let obj of synd) {
-		file_name = `./items/${obj}_items.json`;
-
-		let data = fs.readFileSync(file_name, { encoding: 'utf-8' }).toString();
-		console.log(obj);
+/**
+ * Gets all the item's orders from the specified syndicates.
+ * @param {Array} syndicates Array of Strings of the names of the syndicates to get the item orders from/
+ * @param {Boolean} is_save_file Boolean to save file or not.
+ * @param {Boolean} is_sort  Boolean to sort the prices in decreasing order
+ */
+async function getAllSyndicateItemOrders(syndicates, is_save_file = false) {
+	for (let syndicate_name of syndicates) {
+		let syndicate_file_name = `./items/${syndicate_name}_items.json`;
+		let syndicate_data = api.readFromFileJSON(syndicate_file_name);
 		let result = [];
-		data = JSON.parse(data);
-		for (let d of data) {
-			// console.log(d);
-			let name = d[0].replaceAll(' ', '_').toLowerCase();
-			orders = '';
+		let save_file_name = `./orders/${syndicate_name}_orders`;
+
+		for (let syndicate_item of syndicate_data) {
+			let name = syndicate_item.name;
+			let orders = '';
+
 			try {
-				orders = await api.getItemOrders(name);
+				orders = await api.getWTBItemOrders(name, 'pc', 15);
 			} catch (err) {
 				try {
-					orders = await api.getItemOrders(name + '_set');
+					orders = await api.getWTBItemOrders(name + '_set', 'pc', 15);
 					name += '_set';
 				} catch (err) {
 					try {
-						orders = await api.getItemOrders(name + '_blueprint');
+						orders = await api.getWTBItemOrders(name + '_blueprint', 'pc', 15);
 						name += '_blueprint';
 					} catch (err) {}
 				}
 			}
 
 			if (orders != '' && orders.length > 0) {
-				// console.log(sorted_items[i].id, data);
-
 				let sum = 0;
 				let avg = 0;
 				let min = 100000;
 				let max = 0;
 
-				for (let j = 0; j < orders.length; j++) {
-					price = orders[j].platinum;
+				for (let order of orders) {
+					price = order.platinum;
 					sum += price;
-					if (price < min) {
-						min = price;
-					}
-					if (price > max) {
-						max = price;
-					}
+					if (price < min) min = price;
+					if (price > max) max = price;
 				}
 				avg = sum / orders.length;
 
 				result.push({
 					id: name,
-					standing: d[1],
+					standing: syndicate_item.standing,
 					orders: orders,
 					max: max,
 					avg: avg,
@@ -223,105 +221,54 @@ async function readingSyndicateFilesOrders(synd) {
 				});
 			}
 		}
-		result = JSON.stringify(result);
-		fs.writeFile(`./orders/${obj}_orders.json`, result, function (err) {
-			if (err) {
-				console.log(err);
-			}
-		});
+
+		// Sorting the data in order from highest to lowest price (platinum)
+		if (is_sort) {
+			let sorted_result = result
+				.sort((a, b) => (a.max > b.max ? -1 : 1))
+				.reverse();
+			save_file_name += '_sorted_dec';
+			result = sorted_result;
+		}
+
+		if (is_save_file)
+			fs.writeFileSync(`${save_file_name}.json`, JSON.stringify(result));
 	}
 }
 
-async function readingSyndicateFilesOrders2(synd) {
-	let result = [];
-	for (let d of synd) {
-		// console.log(d);
-		let name = d.drop.replaceAll(' ', '_').toLowerCase();
-		orders = '';
-
-		try {
-			orders = await api.getItemOrders(name);
-		} catch (err) {
-			try {
-				orders = await api.getItemOrders(name + '_set');
-				name += '_set';
-			} catch (err) {
-				try {
-					orders = await api.getItemOrders(name + '_blueprint');
-					name += '_blueprint';
-				} catch (err) {}
-			}
-		}
-		console.log(name);
-
-		if (orders != '' && orders.length > 0) {
-			let sum = 0;
-			let avg = 0;
-			let min = 100000;
-			let max = 0;
-
-			for (let j = 0; j < orders.length; j++) {
-				price = orders[j].platinum;
-				sum += price;
-				if (price < min) {
-					min = price;
-				}
-				if (price > max) {
-					max = price;
-				}
-			}
-			avg = sum / orders.length;
-
-			result.push({
-				id: name,
-				ducat_amt: d.ducat_amt,
-				orders: orders,
-				max: max,
-				avg: avg,
-				min: min,
-			});
-		}
-	}
-	result = JSON.stringify(result);
-	fs.writeFile(`Varzia_relics.json`, result, function (err) {
-		if (err) {
-			console.log(err);
-		}
-	});
-	console.log('Done writing');
-}
-
-async function readRelicsWiki(page, obj, url) {
+/**
+ *
+ * @param {any} page  Active Puppeeter Page which has opened the Wiki page.
+ * @param {String} relic_name  Name of the relic of which to find the drops
+ * @param {String} url  URL of the page to open
+ * @returns {Array}  List of all drops and their ducat values from the relic
+ */
+async function readRelicPageWiki(page, relic_name, url) {
 	try {
+		await pageInterception(page);
 		await page.goto(url, { timeout: 0 });
-
-		console.log('Zooming out');
-		let tmp = await page.evaluate(() => {
-			document.body.style.zoom = 0.5;
-			window.scrollBy(0, window.innerHeight);
-		});
-
-		console.log('Getting data');
 
 		let items = await page.evaluate(() => {
 			let table = document.getElementsByClassName('wikitable')[0].children[0];
 			let result = [];
 
-			for (let i = 1; i < table.children.length; i++) {
+			for (let row of table.children) {
 				try {
-					let row = table.children[i];
 					let name = row.children[0].textContent
+						.toLowerCase()
 						.replace('\n', '')
-						.replace('Blueprint', '')
-						.trim();
+						.replace('blueprint', '')
+						.trim()
+						.replaceAll(' ', '_');
+
 					let ducat_amt = Number(
 						row.children[1].children[0].children[0].textContent
 							.replace('\n', '')
 							.trim()
 					);
 
-					if (name != 'Forma') {
-						result.push({ drop: name, ducat_amt: ducat_amt });
+					if (name != 'forma') {
+						result.push({ id: name, ducat_amt: ducat_amt });
 					}
 				} catch (err) {}
 			}
@@ -330,44 +277,182 @@ async function readRelicsWiki(page, obj, url) {
 		});
 
 		return items;
-
-		// await new Promise((r) => setTimeout(r, 100000));
-		console.log('Done reading above');
 	} catch (error) {
 		console.log('Error reading this page');
 		console.log(error);
 	}
 }
 
+/**
+ * Function which opens the page of each relic and the item's the relic drops.
+ * @param {Array} list_of_relics_names List of all relic names as strings
+ * @param {Boolean} saveFile Boolean to save the results or not
+ * @returns {Array} Array containing all the items dropped from all the relics.
+ */
+async function getAllRelicDropNamesWiki(
+	list_of_relics_names,
+	saveFile = { is_save_file: false, file_name: 'Varzia_relic_names.json' }
+) {
+	let browser = await puppeteer.launch({ headless: false });
+	let result = [];
+
+	for (let relic_name of list_of_relics_names) {
+		let url = `https://warframe.fandom.com/wiki/${relic_name}`;
+		let page = await browser.newPage();
+
+		let arr = await readRelicPageWiki(page, relic_name, url);
+		result = result.concat(arr);
+
+		await page.close();
+	}
+
+	await browser.close();
+	if (saveFile.is_save_file) {
+		fs.writeFileSync(saveFile.file_name, JSON.stringify(result));
+	}
+	return result;
+}
+
+/**
+ * Function to get all Relics drop items' orders
+ * @param {String} drops_file_name Name of the file which contains all the names and ducats.
+ * @param {*} saveFile Boolean to save the results or not
+ */
+async function getAllCurrentVarziaRelicDropsOrders(
+	drops_file_name,
+	saveFile = { is_save_file: false, file_name: 'Varzia_relics_orders.json' }
+) {
+	let drops = api.readFromFileJSON(drops_file_name);
+	let result = [];
+	for (let drop_name of drops) {
+		let name = drop_name.id;
+		let orders = [];
+
+		// Some items are needed to get _set and _blueprint
+		try {
+			orders = await api.getWTBItemOrders(name, 'pc', 15);
+			if (orders.length > 0) {
+				let sum = 0;
+				let avg = 0;
+				let min = 100000;
+				let max = 0;
+
+				for (let order of orders) {
+					price = order.platinum;
+					sum += price;
+					if (price < min) min = price;
+					if (price > max) max = price;
+				}
+				avg = sum / orders.length;
+
+				result.push({
+					id: name,
+					ducat_amt: drop_name.ducat_amt,
+					orders: orders,
+					max: max,
+					avg: avg,
+					min: min,
+				});
+			}
+		} catch (err) {}
+
+		try {
+			let tmp_name = name + '_set';
+			orders = await api.getWTBItemOrders(tmp_name, 'pc', 15);
+			if (orders.length > 0) {
+				let sum = 0;
+				let avg = 0;
+				let min = 100000;
+				let max = 0;
+
+				for (let order of orders) {
+					price = order.platinum;
+					sum += price;
+					if (price < min) min = price;
+					if (price > max) max = price;
+				}
+				avg = sum / orders.length;
+
+				result.push({
+					id: tmp_name,
+					ducat_amt: drop_name.ducat_amt,
+					orders: orders,
+					max: max,
+					avg: avg,
+					min: min,
+				});
+			}
+		} catch (err) {}
+
+		try {
+			let tmp_name = name + '_blueprint';
+			orders = await api.getWTBItemOrders(tmp_name, 'pc', 15);
+			if (orders.length > 0) {
+				let sum = 0;
+				let avg = 0;
+				let min = 100000;
+				let max = 0;
+
+				for (let order of orders) {
+					price = order.platinum;
+					sum += price;
+					if (price < min) min = price;
+					if (price > max) max = price;
+				}
+				avg = sum / orders.length;
+
+				result.push({
+					id: tmp_name,
+					ducat_amt: drop_name.ducat_amt,
+					orders: orders,
+					max: max,
+					avg: avg,
+					min: min,
+				});
+			}
+		} catch (err) {}
+		console.log(' ');
+	}
+	if (saveFile.is_save_file)
+		fs.writeFileSync(saveFile.file_name, JSON.stringify(result));
+	console.log('Done writing');
+}
+
 async function main() {
-	console.log('Starting the process...');
-	const syndicateNamesList = [
-		'Steel Meridian',
-		'Arbiters of Hexis',
-		'Cephalon Suda',
-		'The Perrin Sequence',
-		'Red Veil',
-		'New Loka',
-		'Conclave',
-		'Cephalon Simaris',
-		'Ostron',
-		'The Quills',
-		'Solaris United',
-		'Vox Solaris (Syndicate)',
-		'Ventkids',
-		'Entrati',
-		'Necraloid',
-		'The Holdfasts',
+	let syndicates_list = [
 		'Cavia',
+		'Entrati',
 		"Kahl's Garrison",
-		'Operational Supply',
-		'Nightwave',
+		'The Holdfasts',
 	];
-	// await mainScrapers(syndicateNamesList, getSyndicateItemsFromMarket);
-	let tmp = ['Cavia', 'Entrati', "Kahl's Garrison", 'The Holdfasts'];
-	readingSyndicateFilesOrders(tmp);
-	// let data = ['Lith D6', 'Meso H8', 'Neo C5', 'Neo K8', 'Axi G13', 'Axi N11'];
-	// await mainScrapers2(data, readRelicsWiki);
+
+	let varzia_relics = [
+		'Lith D6',
+		'Meso H8',
+		'Neo C5',
+		'Neo K8',
+		'Axi G13',
+		'Axi N11',
+	];
+	await getAllSyndicateItems(allSyndicateNamesList, true);
 }
 
 main();
+
+//Unit Testing
+// async function unitTesting() {
+// 	// await mainScrapers(['Entrati']);
+// 	// await getAllSyndicateItemOrders(['Entrati'], true);
+
+// 	// Varzia Relics
+// 	// let relics_drops = await getAllRelicDropNamesWiki(['Lith D6', 'Meso H8'], {
+// 	// 	is_save_file: true,
+// 	// 	file_name: 'Varzia_relic_names.json',
+// 	// });
+// 	getAllCurrentVarziaRelicDropsOrders('Varzia_relic_names.json', {
+// 		is_save_file: true,
+// 		file_name: 'Varzia_relics_orders.json',
+// 	});
+// }
+
+// unitTesting();

@@ -181,7 +181,7 @@ async function getAllItemsOrders(
 		let sorted_result = result
 			.sort((a, b) => (a.max > b.max ? -1 : 1))
 			.reverse();
-		saveFile.file_name = saveFile.file_name += '_sorted_dec';
+		saveFile.file_name += '_sorted_dec';
 		result = sorted_result;
 	}
 

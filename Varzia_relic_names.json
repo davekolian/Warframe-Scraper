@@ -1,0 +1,12 @@
+[
+	{ "id": "corvas_prime_receiver", "ducat_amt": 15 },
+	{ "id": "burston_prime", "ducat_amt": 15 },
+	{ "id": "lex_prime", "ducat_amt": 25 },
+	{ "id": "nagantaka_prime_stock", "ducat_amt": 45 },
+	{ "id": "dual_keres_prime", "ducat_amt": 100 },
+	{ "id": "nagantaka_prime_barrel", "ducat_amt": 15 },
+	{ "id": "lex_prime_receiver", "ducat_amt": 15 },
+	{ "id": "dual_keres_prime_handle", "ducat_amt": 45 },
+	{ "id": "corvas_prime", "ducat_amt": 45 },
+	{ "id": "hystrix_prime_receiver", "ducat_amt": 100 }
+]
