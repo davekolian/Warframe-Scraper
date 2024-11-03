@@ -182,19 +182,24 @@ async function getSyndicateItemsFromWiki(
 		console.log(error);
 	}
 }
-
+// check this for the file name
 /**
  * Gets all the item's orders from the specified syndicates.
- * @param {Array} syndicates Array of Strings of the names of the syndicates to get the item orders from/
+ * @param {Array} syndicates Array of Strings of the names of the syndicates to get the item orders from.
  * @param {Boolean} is_save_file Boolean to save file or not.
  * @param {Boolean} is_sort  Boolean to sort the prices in decreasing order
  */
-async function getAllSyndicateItemOrders(syndicates, is_save_file = false) {
+async function getAllSyndicateItemOrders(
+	syndicates,
+	is_save_file = false,
+	is_sort = false
+) {
 	for (let syndicate_name of syndicates) {
-		let syndicate_file_name = `${items_folder_dir}${syndicate_name}_items.json`;
-		let syndicate_data = api.readFromFileJSON(syndicate_file_name);
+		console.log(syndicate_name);
+		let syndicate_file_name = `${items_folder_dir}syndicate_items/${syndicate_name}_items`;
+		let syndicate_data = api.readFromFileJSON(`${syndicate_file_name}.json`);
 		let result = [];
-		let save_file_name = `${orders_folder_dir}${syndicate_name}_orders`;
+		let save_file_name = `${orders_folder_dir}syndicate_orders/${syndicate_name}_orders`;
 
 		for (let syndicate_item of syndicate_data) {
 			let name = syndicate_item.name;
@@ -241,9 +246,7 @@ async function getAllSyndicateItemOrders(syndicates, is_save_file = false) {
 
 		// Sorting the data in order from highest to lowest price (platinum)
 		if (is_sort) {
-			let sorted_result = result
-				.sort((a, b) => (a.max > b.max ? -1 : 1))
-				.reverse();
+			let sorted_result = result.sort((a, b) => (a.max > b.max ? -1 : 1));
 			save_file_name += '_sorted_dec';
 			result = sorted_result;
 		}
@@ -264,7 +267,7 @@ async function getAllSyndicateItemOrders(syndicates, is_save_file = false) {
 async function getAllRelicDropNamesWiki(
 	list_of_relics_names,
 	is_save_file = false,
-	output_file_name = `${items_folder_dir}Varzia_relics_drop_names.json`,
+	output_file_name = `${items_folder_dir}Varzia_relics_drop_names`,
 	headless_mode = true
 ) {
 	let browser = await puppeteer.launch({ headless: headless_mode });
@@ -282,7 +285,7 @@ async function getAllRelicDropNamesWiki(
 
 	await browser.close();
 	if (is_save_file) {
-		fs.writeFileSync(output_file_name, JSON.stringify(result));
+		fs.writeFileSync(`${output_file_name}.json`, JSON.stringify(result));
 	}
 	return result;
 }
@@ -334,19 +337,20 @@ async function readRelicPageWiki(page, relic_name, url) {
 	}
 }
 
-// Add sorting to this
 /**
  * Function to get all Relics drop items' orders
  * @param {String} drops_file_name Name of the file which contains all the names and ducats.
  * @param {Boolean} is_save_file  Boolean to decide saving results to a file or not.
  * @param {String} output_file_name  File name to save the results to.
+ * @param {Boolean} is_sorted  Boolean to sort the files in decreasing order or not
  */
 async function getAllRelicDropsOrders(
-	drops_file_name,
+	drops_file_name = `${items_folder_dir}Varzia_relics_drop_names`,
 	is_save_file = false,
-	output_file_name = `${orders_folder_dir}Varzia_relics_drop_orders.json`
+	output_file_name = `${orders_folder_dir}Varzia_relics_drop_orders`,
+	is_sorted = false
 ) {
-	let drops = api.readFromFileJSON(drops_file_name);
+	let drops = api.readFromFileJSON(`${drops_file_name}.json`);
 	let result = [];
 	for (let drop_name of drops) {
 		let name = drop_name.name;
@@ -436,8 +440,15 @@ async function getAllRelicDropsOrders(
 			}
 		} catch (err) {}
 	}
+
+	if (is_sorted) {
+		let sorted_result = result.sort((a, b) => (a.max > b.max ? -1 : 1));
+		output_file_name += '_sorted_dec';
+		result = sorted_result;
+	}
+
 	if (is_save_file)
-		fs.writeFileSync(output_file_name, JSON.stringify(result));
+		fs.writeFileSync(`${output_file_name}.json`, JSON.stringify(result));
 	console.log('Done writing');
 }
 

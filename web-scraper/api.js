@@ -8,6 +8,9 @@ const fs = require('fs');
 // Everything on this file is using the Warframe Market API.
 // Their docs are here: https://warframe.market/api_docs
 
+const items_folder_dir = './items/';
+const orders_folder_dir = './orders/';
+
 /**
  * Returns the name of each item that is stored on the Warframe Market API database.
  * @param {Boolean} is_save_file  Boolean to decide saving results to a file or not.
@@ -16,7 +19,7 @@ const fs = require('fs');
  */
 async function getAllItemsUrlName(
 	is_save_file = false,
-	output_file_name = 'all_items_url_name.json'
+	output_file_name = `${items_folder_dir}all_items_url_name.json`
 ) {
 	const apiURL = 'https://api.warframe.market/v1/items';
 
@@ -45,7 +48,7 @@ async function getWTBItemOrders(
 	platform,
 	min_plat_limit,
 	is_save_file = false,
-	output_file_name = `${item}_orders.json`
+	output_file_name = `${orders_folder_dir}${item}_orders`
 ) {
 	const apiURL = `https://api.warframe.market/v1/items/${item}/orders`;
 
@@ -71,7 +74,7 @@ async function getWTBItemOrders(
 		});
 
 	if (is_save_file) {
-		fs.writeFileSync(output_file_name, JSON.stringify(result));
+		fs.writeFileSync(`${output_file_name}.json`, JSON.stringify(result));
 	}
 	return result;
 }
@@ -86,7 +89,7 @@ async function getWTBItemOrders(
 async function getItemTags(
 	item,
 	is_save_file = false,
-	output_file_name = `${item}_tags.json`
+	output_file_name = `${item}_tags`
 ) {
 	const apiURL = `https://api.warframe.market/v1/items/${item}`;
 
@@ -104,7 +107,7 @@ async function getItemTags(
 	})[0];
 
 	if (is_save_file) {
-		fs.writeFileSync(output_file_name, JSON.stringify(result));
+		fs.writeFileSync(`${output_file_name}.json`, JSON.stringify(result));
 	}
 	return result;
 }
@@ -123,20 +126,21 @@ function readFromFileJSON(file_name) {
  * Gets every item's orders from Warframe Market API
  * @param {Boolean} is_save_file  Boolean to decide saving results to a file or not.
  * @param {String} output_file_name  File name to save the results to.
- * @param {Boolean} isSorted Boolean to decide to sort the results or not
+ * @param {Boolean} is_sorted Boolean to decide to sort the results or not
  */
 async function getAllItemsOrders(
+	all_items_file_name = `${items_folder_dir}all_items_url_name.json`,
 	is_save_file = false,
-	output_file_name = `${item}_tags.json`,
-	isSorted = false,
+	output_file_name = `${orders_folder_dir}all_items_orders`,
+	is_sorted = false,
 	platform = 'pc',
 	min_plat_limit = 15
 ) {
 	let result = [];
-	let all_items_market_data = readFromFileJSON('all_items_market.json');
+	let all_items_market_data = readFromFileJSON(all_items_file_name);
 
 	for (let name of all_items_market_data) {
-		let orders = '';
+		let orders = [];
 
 		try {
 			orders = await getWTBItemOrders(name, platform, min_plat_limit);
@@ -167,10 +171,8 @@ async function getAllItemsOrders(
 	}
 
 	// Sorting the data in order from highest to lowest price (platinum)
-	if (isSorted) {
-		let sorted_result = result
-			.sort((a, b) => (a.max > b.max ? -1 : 1))
-			.reverse();
+	if (is_sorted) {
+		let sorted_result = result.sort((a, b) => (a.max > b.max ? -1 : 1));
 		output_file_name += '_sorted_dec';
 		result = sorted_result;
 	}
