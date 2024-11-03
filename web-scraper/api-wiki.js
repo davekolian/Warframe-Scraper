@@ -18,6 +18,9 @@ stealth.enabledEvasions.delete('chrome.runtime');
 stealth.enabledEvasions.delete('iframe.contentWindow');
 puppeteer.use(stealth);
 
+const items_folder_dir = './items/';
+const orders_folder_dir = './orders/';
+
 const allSyndicateNamesList = [
 	'Steel Meridian',
 	'Arbiters of Hexis',
@@ -84,7 +87,7 @@ async function getAllSyndicateItems(
 		let url = `https://warframe.fandom.com/wiki/${syndicate_name}`;
 		let page = await browser.newPage();
 
-		console.log(syndicate_name);
+		// console.log(syndicate_name);
 		await getSyndicateItemsFromWiki(page, syndicate_name, url, save_each_file);
 
 		await page.close();
@@ -156,7 +159,7 @@ async function getSyndicateItemsFromWiki(
 
 		if (is_save_file)
 			fs.writeFileSync(
-				`./items/${syndicate_name}_items.json`,
+				`${items_folder_dir}/syndicate_items/${syndicate_name}_items.json`,
 				JSON.stringify(items)
 			);
 		return items;
@@ -174,10 +177,10 @@ async function getSyndicateItemsFromWiki(
  */
 async function getAllSyndicateItemOrders(syndicates, is_save_file = false) {
 	for (let syndicate_name of syndicates) {
-		let syndicate_file_name = `./items/${syndicate_name}_items.json`;
+		let syndicate_file_name = `${items_folder_dir}${syndicate_name}_items.json`;
 		let syndicate_data = api.readFromFileJSON(syndicate_file_name);
 		let result = [];
-		let save_file_name = `./orders/${syndicate_name}_orders`;
+		let save_file_name = `${orders_folder_dir}${syndicate_name}_orders`;
 
 		for (let syndicate_item of syndicate_data) {
 			let name = syndicate_item.name;
@@ -291,7 +294,10 @@ async function readRelicPageWiki(page, relic_name, url) {
  */
 async function getAllRelicDropNamesWiki(
 	list_of_relics_names,
-	saveFile = { is_save_file: false, file_name: 'Varzia_relic_names.json' }
+	saveFile = {
+		is_save_file: false,
+		file_name: `${items_folder_dir}Varzia_relics_drop_names.json`,
+	}
 ) {
 	let browser = await puppeteer.launch({ headless: false });
 	let result = [];
@@ -313,6 +319,7 @@ async function getAllRelicDropNamesWiki(
 	return result;
 }
 
+// Add sorting to this
 /**
  * Function to get all Relics drop items' orders
  * @param {String} drops_file_name Name of the file which contains all the names and ducats.
@@ -320,7 +327,10 @@ async function getAllRelicDropNamesWiki(
  */
 async function getAllCurrentVarziaRelicDropsOrders(
 	drops_file_name,
-	saveFile = { is_save_file: false, file_name: 'Varzia_relics_orders.json' }
+	saveFile = {
+		is_save_file: false,
+		file_name: `${orders_folder_dir}Varzia_relics_drop_orders.json`,
+	}
 ) {
 	let drops = api.readFromFileJSON(drops_file_name);
 	let result = [];
@@ -411,7 +421,6 @@ async function getAllCurrentVarziaRelicDropsOrders(
 				});
 			}
 		} catch (err) {}
-		console.log(' ');
 	}
 	if (saveFile.is_save_file)
 		fs.writeFileSync(saveFile.file_name, JSON.stringify(result));
@@ -434,7 +443,18 @@ async function main() {
 		'Axi G13',
 		'Axi N11',
 	];
-	await getAllSyndicateItems(allSyndicateNamesList, true);
+	// await getAllSyndicateItems(allSyndicateNamesList, true);
+	// await getAllRelicDropNamesWiki(varzia_relics, {
+	// 	is_save_file: true,
+	// 	file_name: `${items_folder_dir}Varzia_relics_drop_names.json`,
+	// });
+	await getAllCurrentVarziaRelicDropsOrders(
+		`${items_folder_dir}Varzia_relics_drop_names.json`,
+		(saveFile = {
+			is_save_file: true,
+			file_name: `${orders_folder_dir}Varzia_relics_drop_orders.json`,
+		})
+	);
 }
 
 main();
