@@ -92,9 +92,10 @@ async function pageInterception(page) {
  */
 async function getAllSyndicateItems(
 	list_of_syndicates,
-	save_each_file = false
+	save_each_file = false,
+	headless_mode = true
 ) {
-	let browser = await puppeteer.launch({ headless: false });
+	let browser = await puppeteer.launch({ headless: headless_mode });
 
 	for (let syndicate_name of list_of_syndicates) {
 		let url = `https://warframe.fandom.com/wiki/${syndicate_name}`;
@@ -228,7 +229,7 @@ async function getAllSyndicateItemOrders(syndicates, is_save_file = false) {
 				avg = sum / orders.length;
 
 				result.push({
-					id: name,
+					name: name,
 					standing: syndicate_item.standing,
 					orders: orders,
 					max: max,
@@ -256,17 +257,17 @@ async function getAllSyndicateItemOrders(syndicates, is_save_file = false) {
 /**
  * Function which opens the page of each relic and the item's the relic drops.
  * @param {Array} list_of_relics_names List of all relic names as strings
- * @param {Boolean} saveFile Boolean to save the results or not
+ * @param {Boolean} is_save_file Boolean to save the results or not
+ * @param {String} output_file_name File name to save the results
  * @returns {Array} Array containing all the items dropped from all the relics.
  */
 async function getAllRelicDropNamesWiki(
 	list_of_relics_names,
-	saveFile = {
-		is_save_file: false,
-		file_name: `${items_folder_dir}Varzia_relics_drop_names.json`,
-	}
+	is_save_file = false,
+	output_file_name = `${items_folder_dir}Varzia_relics_drop_names.json`,
+	headless_mode = true
 ) {
-	let browser = await puppeteer.launch({ headless: false });
+	let browser = await puppeteer.launch({ headless: headless_mode });
 	let result = [];
 
 	for (let relic_name of list_of_relics_names) {
@@ -280,8 +281,8 @@ async function getAllRelicDropNamesWiki(
 	}
 
 	await browser.close();
-	if (saveFile.is_save_file) {
-		fs.writeFileSync(saveFile.file_name, JSON.stringify(result));
+	if (is_save_file) {
+		fs.writeFileSync(output_file_name, JSON.stringify(result));
 	}
 	return result;
 }
@@ -318,7 +319,7 @@ async function readRelicPageWiki(page, relic_name, url) {
 					);
 
 					if (name != 'forma') {
-						result.push({ id: name, ducat_amt: ducat_amt });
+						result.push({ name: name, ducat_amt: ducat_amt });
 					}
 				} catch (err) {}
 			}
@@ -337,19 +338,18 @@ async function readRelicPageWiki(page, relic_name, url) {
 /**
  * Function to get all Relics drop items' orders
  * @param {String} drops_file_name Name of the file which contains all the names and ducats.
- * @param {*} saveFile Boolean to save the results or not
+ * @param {Boolean} is_save_file  Boolean to decide saving results to a file or not.
+ * @param {String} output_file_name  File name to save the results to.
  */
 async function getAllRelicDropsOrders(
 	drops_file_name,
-	saveFile = {
-		is_save_file: false,
-		file_name: `${orders_folder_dir}Varzia_relics_drop_orders.json`,
-	}
+	is_save_file = false,
+	output_file_name = `${orders_folder_dir}Varzia_relics_drop_orders.json`
 ) {
 	let drops = api.readFromFileJSON(drops_file_name);
 	let result = [];
 	for (let drop_name of drops) {
-		let name = drop_name.id;
+		let name = drop_name.name;
 		let orders = [];
 
 		// Some items are needed to get _set and _blueprint
@@ -370,7 +370,7 @@ async function getAllRelicDropsOrders(
 				avg = sum / orders.length;
 
 				result.push({
-					id: name,
+					name: name,
 					ducat_amt: drop_name.ducat_amt,
 					orders: orders,
 					max: max,
@@ -398,7 +398,7 @@ async function getAllRelicDropsOrders(
 				avg = sum / orders.length;
 
 				result.push({
-					id: tmp_name,
+					name: tmp_name,
 					ducat_amt: drop_name.ducat_amt,
 					orders: orders,
 					max: max,
@@ -426,7 +426,7 @@ async function getAllRelicDropsOrders(
 				avg = sum / orders.length;
 
 				result.push({
-					id: tmp_name,
+					name: tmp_name,
 					ducat_amt: drop_name.ducat_amt,
 					orders: orders,
 					max: max,
@@ -436,8 +436,8 @@ async function getAllRelicDropsOrders(
 			}
 		} catch (err) {}
 	}
-	if (saveFile.is_save_file)
-		fs.writeFileSync(saveFile.file_name, JSON.stringify(result));
+	if (is_save_file)
+		fs.writeFileSync(output_file_name, JSON.stringify(result));
 	console.log('Done writing');
 }
 
@@ -471,7 +471,7 @@ async function main() {
 	);
 }
 
-main();
+// main();
 
 //Unit Testing
 // async function unitTesting() {

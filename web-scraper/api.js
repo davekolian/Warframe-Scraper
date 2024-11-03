@@ -10,16 +10,13 @@ const fs = require('fs');
 
 /**
  * Returns the name of each item that is stored on the Warframe Market API database.
- * @param {Object} saveFile  Save file settings.
- * @param {Boolean} saveFile.is_save_file  Boolean to decide saving results to a file or not.
- * @param {String} saveFile.file_name  File name to save the results to.
+ * @param {Boolean} is_save_file  Boolean to decide saving results to a file or not.
+ * @param {String} output_file_name  File name to save the results to.
  * @returns {Array}  Array of all the names of the items stored.
  */
 async function getAllItemsUrlName(
-	saveFile = {
-		is_save_file: false,
-		file_name: 'all_items_url_name.json',
-	}
+	is_save_file = false,
+	output_file_name = 'all_items_url_name.json'
 ) {
 	const apiURL = 'https://api.warframe.market/v1/items';
 
@@ -27,8 +24,8 @@ async function getAllItemsUrlName(
 	let obj = await res.json();
 	let result = obj.payload.items.map((item) => item.url_name);
 
-	if (saveFile.is_save_file) {
-		fs.writeFileSync(saveFile.file_name, JSON.stringify(result));
+	if (is_save_file) {
+		fs.writeFileSync(output_file_name, JSON.stringify(result));
 	}
 	return result;
 }
@@ -39,19 +36,16 @@ async function getAllItemsUrlName(
  * @param {String} item  Name of the item to be searched.
  * @param {String} platform  Game platform from where the orders are made.
  * @param {Number} min_plat_limit Shows orders that have a platinum value of this or more.
- * @param {Object} saveFile  Save file settings.
- * @param {Boolean} saveFile.is_save_file  Boolean to decide saving results to a file or not.
- * @param {String} saveFile.file_name  File name to save the results to.
+ * @param {Boolean} is_save_file  Boolean to decide saving results to a file or not.
+ * @param {String} output_file_name  File name to save the results to.
  * @returns {Array}  Array of all the orders.
  */
 async function getWTBItemOrders(
 	item,
 	platform,
 	min_plat_limit,
-	saveFile = {
-		is_save_file: false,
-		file_name: `${item}_orders.json`,
-	}
+	is_save_file = false,
+	output_file_name = `${item}_orders.json`
 ) {
 	const apiURL = `https://api.warframe.market/v1/items/${item}/orders`;
 
@@ -76,8 +70,8 @@ async function getWTBItemOrders(
 			};
 		});
 
-	if (saveFile.is_save_file) {
-		fs.writeFileSync(saveFile.file_name, JSON.stringify(result));
+	if (is_save_file) {
+		fs.writeFileSync(output_file_name, JSON.stringify(result));
 	}
 	return result;
 }
@@ -85,17 +79,14 @@ async function getWTBItemOrders(
 /**
  * Find the tags of the item parameter using the Warframe Market API and return the relevant keys from the JSON response.
  * @param {String} item  Name of the item to be searched.
- * @param {Object} saveFile  Save file settings.
- * @param {Boolean} saveFile.is_save_file  Boolean to decide saving results to a file or not.
- * @param {String} saveFile.file_name  File name to save the results to.
+ * @param {Boolean} is_save_file  Boolean to decide saving results to a file or not.
+ * @param {String} output_file_name  File name to save the results to.
  * @returns {Object}  Object which contains the details of the item searched.
  */
 async function getItemTags(
 	item,
-	saveFile = {
-		is_save_file: false,
-		file_name: `${item}_tags.json`,
-	}
+	is_save_file = false,
+	output_file_name = `${item}_tags.json`
 ) {
 	const apiURL = `https://api.warframe.market/v1/items/${item}`;
 
@@ -104,7 +95,7 @@ async function getItemTags(
 
 	let result = obj.payload.item.items_in_set.map((item) => {
 		return {
-			id: item.url_name,
+			name: item.url_name,
 			tags: item.tags,
 			trading_tax: item.trading_tax,
 			mod_max_rank: item.mod_max_rank,
@@ -112,8 +103,8 @@ async function getItemTags(
 		};
 	})[0];
 
-	if (saveFile.is_save_file) {
-		fs.writeFileSync(saveFile.file_name, JSON.stringify(result));
+	if (is_save_file) {
+		fs.writeFileSync(output_file_name, JSON.stringify(result));
 	}
 	return result;
 }
@@ -130,17 +121,16 @@ function readFromFileJSON(file_name) {
 
 /**
  * Gets every item's orders from Warframe Market API
- * @param {Object} saveFile  Save file settings.
- * @param {Boolean} saveFile.is_save_file  Boolean to decide saving results to a file or not.
- * @param {String} saveFile.file_name  File name to save the results to.
+ * @param {Boolean} is_save_file  Boolean to decide saving results to a file or not.
+ * @param {String} output_file_name  File name to save the results to.
  * @param {Boolean} isSorted Boolean to decide to sort the results or not
  */
 async function getAllItemsOrders(
-	saveFile = {
-		is_save_file: false,
-		file_name: `${item}_tags.json`,
-	},
-	isSorted = false
+	is_save_file = false,
+	output_file_name = `${item}_tags.json`,
+	isSorted = false,
+	platform = 'pc',
+	min_plat_limit = 15
 ) {
 	let result = [];
 	let all_items_market_data = readFromFileJSON('all_items_market.json');
@@ -149,7 +139,7 @@ async function getAllItemsOrders(
 		let orders = '';
 
 		try {
-			orders = await getWTBItemOrders(name, 'pc', 15);
+			orders = await getWTBItemOrders(name, platform, min_plat_limit);
 		} catch (err) {}
 
 		if (orders.length > 0) {
@@ -167,7 +157,7 @@ async function getAllItemsOrders(
 
 			avg = sum / orders.length;
 			result.push({
-				id: name,
+				name: name,
 				orders: orders,
 				max: max,
 				avg: avg,
@@ -181,12 +171,12 @@ async function getAllItemsOrders(
 		let sorted_result = result
 			.sort((a, b) => (a.max > b.max ? -1 : 1))
 			.reverse();
-		saveFile.file_name += '_sorted_dec';
+		output_file_name += '_sorted_dec';
 		result = sorted_result;
 	}
 
-	if (saveFile.is_save_file) {
-		fs.writeFileSync(`${saveFile.file_name}.json`, JSON.stringify(result));
+	if (is_save_file) {
+		fs.writeFileSync(`${output_file_name}.json`, JSON.stringify(result));
 	}
 	// return result;
 }
