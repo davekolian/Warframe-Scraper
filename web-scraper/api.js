@@ -181,11 +181,6 @@ async function getAllItemsOrders(
 	// return result;
 }
 
-// getAllItemsOrders(
-// 	{ is_save_file: true, file_name: 'all_items_orders' },
-// 	(isSorted = true)
-// );
-
 module.exports = {
 	getAllItemsUrlName,
 	getItemTags,
@@ -193,9 +188,3 @@ module.exports = {
 	getAllItemsOrders,
 	readFromFileJSON,
 };
-
-// Unit Testing
-// const saveFile = { is_save_file: true, file_name: 'test.json' };
-// getAllItemsUrlName({ is_save_file: true, file_name: 'test.json' });
-// getItemTags('abating_link', { is_save_file: true, file_name: 'test2.json' });
-// getWTBItemOrders('arcane_energize', 'pc', 15, { is_save_file: true, file_name: 'test3.json' });

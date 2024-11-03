@@ -441,56 +441,6 @@ async function getAllRelicDropsOrders(
 	console.log('Done writing');
 }
 
-async function main() {
-	let syndicates_list = [
-		'Cavia',
-		'Entrati',
-		"Kahl's Garrison",
-		'The Holdfasts',
-	];
-
-	let varzia_relics = [
-		'Lith D6',
-		'Meso H8',
-		'Neo C5',
-		'Neo K8',
-		'Axi G13',
-		'Axi N11',
-	];
-	// await getAllSyndicateItems(allSyndicateNamesList, true);
-	// await getAllRelicDropNamesWiki(varzia_relics, {
-	// 	is_save_file: true,
-	// 	file_name: `${items_folder_dir}Varzia_relics_drop_names.json`,
-	// });
-	await getAllRelicDropsOrders(
-		`${items_folder_dir}Varzia_relics_drop_names.json`,
-		(saveFile = {
-			is_save_file: true,
-			file_name: `${orders_folder_dir}Varzia_relics_drop_orders.json`,
-		})
-	);
-}
-
-// main();
-
-//Unit Testing
-// async function unitTesting() {
-// 	// await mainScrapers(['Entrati']);
-// 	// await getAllSyndicateItemOrders(['Entrati'], true);
-
-// 	// Varzia Relics
-// 	// let relics_drops = await getAllRelicDropNamesWiki(['Lith D6', 'Meso H8'], {
-// 	// 	is_save_file: true,
-// 	// 	file_name: 'Varzia_relic_names.json',
-// 	// });
-// 	getAllRelicDropsOrders('Varzia_relic_names.json', {
-// 		is_save_file: true,
-// 		file_name: 'Varzia_relics_orders.json',
-// 	});
-// }
-
-// unitTesting();
-
 module.exports = {
 	getAllSyndicateItems,
 	getAllSyndicateItemOrders,
