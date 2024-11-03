@@ -43,7 +43,20 @@ const varzia_relics = [
 	'Axi N11',
 ];
 
+const custom_syndicate_list = [
+	'Cavia',
+	'Entrati',
+	"Kahl's Garrison",
+	'The Holdfasts',
+];
+
 async function main() {
+	// Check if the directories exist.
+	api.checkCreateDir('./items/');
+	api.checkCreateDir('./items/syndicate_items');
+	api.checkCreateDir('./orders/');
+	api.checkCreateDir('./orders/syndicate_orders');
+
 	// Get Varzia relic drops
 	// let varzia_drops = await wikiScraper.getAllRelicDropNamesWiki(
 	// 	varzia_relics,
@@ -62,26 +75,21 @@ async function main() {
 	// );
 
 	// Get Syndicate Items Orders - takes 839.607 seconds that is quite some time
-	let custom_syndicate_list = [
-		'Cavia',
-		'Entrati',
-		"Kahl's Garrison",
-		'The Holdfasts',
-	];
+
 	// await wikiScraper.getAllSyndicateItemOrders(custom_syndicate_list, true, true);
 
 	// Get All Warframe Market Items
 	// await api.getAllItemsUrlName(true, undefined);
 
 	// Get All Warframe Market Items Orders - ~10 minutes for 1300 items, way to slow
-	await api.getAllItemsOrders(
-		undefined,
-		true,
-		undefined,
-		true,
-		undefined,
-		undefined
-	);
+	// await api.getAllItemsOrders(
+	// 	undefined,
+	// 	true,
+	// 	undefined,
+	// 	true,
+	// 	undefined,
+	// 	undefined
+	// );
 }
 
 main();

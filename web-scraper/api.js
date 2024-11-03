@@ -11,6 +11,27 @@ const fs = require('fs');
 const items_folder_dir = './items/';
 const orders_folder_dir = './orders/';
 
+// Utility functions
+/**
+ * Reads data from file and return it parsed by JSON.
+ * @param {String} file_name  File name to read data from.
+ * @returns  JSON parsed data obtained from the file.
+ */
+function readFromFileJSON(file_name) {
+	let result = fs.readFileSync(file_name, { encoding: 'utf-8' });
+	return JSON.parse(result);
+}
+
+/**
+ * Check if the directory exists. If it doesn't create it.
+ */
+function checkCreateDir(dir) {
+	if (!fs.existsSync(dir)) {
+		fs.mkdirSync(dir);
+	}
+}
+
+
 /**
  * Returns the name of each item that is stored on the Warframe Market API database.
  * @param {Boolean} is_save_file  Boolean to decide saving results to a file or not.
@@ -113,16 +134,6 @@ async function getItemTags(
 }
 
 /**
- * Reads data from file and return it parsed by JSON.
- * @param {String} file_name  File name to read data from.
- * @returns  JSON parsed data obtained from the file.
- */
-function readFromFileJSON(file_name) {
-	let result = fs.readFileSync(file_name, { encoding: 'utf-8' });
-	return JSON.parse(result);
-}
-
-/**
  * Gets every item's orders from Warframe Market API
  * @param {Boolean} is_save_file  Boolean to decide saving results to a file or not.
  * @param {String} output_file_name  File name to save the results to.
@@ -184,9 +195,10 @@ async function getAllItemsOrders(
 }
 
 module.exports = {
+	readFromFileJSON,
+	checkCreateDir,
 	getAllItemsUrlName,
 	getItemTags,
 	getWTBItemOrders,
 	getAllItemsOrders,
-	readFromFileJSON,
 };

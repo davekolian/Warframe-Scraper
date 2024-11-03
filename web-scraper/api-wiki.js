@@ -89,6 +89,8 @@ async function pageInterception(page) {
 /**
  * Function which opens the Syndicate Wiki page of each Syndicate to get it's items.
  * @param {Array} list_of_syndicates List of all syndicates as strings
+ * @param {Boolean} save_each_file Boolean to save the results or not
+ * @param {Boolean} headless_mode Boolean to decide to launch puppeeter in headless mode or not.
  */
 async function getAllSyndicateItems(
 	list_of_syndicates,
@@ -111,7 +113,7 @@ async function getAllSyndicateItems(
 }
 
 /**
- * Function to zoom out the page contents to load more content and forced open the tables.
+ * Helper function which opens the specific page and scrapes the required data.
  * @param {any} page  Active Puppeeter Page which has opened the Wiki page.
  * @param {String} syndicate_name Name of the Syndicate to scrape.
  * @param {String} url  URL of the page to visit.
@@ -182,17 +184,18 @@ async function getSyndicateItemsFromWiki(
 		console.log(error);
 	}
 }
+
 // check this for the file name
 /**
  * Gets all the item's orders from the specified syndicates.
  * @param {Array} syndicates Array of Strings of the names of the syndicates to get the item orders from.
  * @param {Boolean} is_save_file Boolean to save file or not.
- * @param {Boolean} is_sort  Boolean to sort the prices in decreasing order
+ * @param {Boolean} is_sorted  Boolean to sort the prices in decreasing order
  */
 async function getAllSyndicateItemOrders(
 	syndicates,
 	is_save_file = false,
-	is_sort = false
+	is_sorted = false
 ) {
 	for (let syndicate_name of syndicates) {
 		console.log(syndicate_name);
@@ -245,7 +248,7 @@ async function getAllSyndicateItemOrders(
 		}
 
 		// Sorting the data in order from highest to lowest price (platinum)
-		if (is_sort) {
+		if (is_sorted) {
 			let sorted_result = result.sort((a, b) => (a.max > b.max ? -1 : 1));
 			save_file_name += '_sorted_dec';
 			result = sorted_result;
@@ -262,6 +265,7 @@ async function getAllSyndicateItemOrders(
  * @param {Array} list_of_relics_names List of all relic names as strings
  * @param {Boolean} is_save_file Boolean to save the results or not
  * @param {String} output_file_name File name to save the results
+ * @param {Boolean} headless_mode Boolean to decide to launch puppeeter in headless mode or not.
  * @returns {Array} Array containing all the items dropped from all the relics.
  */
 async function getAllRelicDropNamesWiki(
