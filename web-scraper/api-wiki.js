@@ -5,10 +5,22 @@
 // This application is mainly used to get data from the Warframe Fandom website found here: https://warframe.fandom.com/wiki/WARFRAME_Wiki.
 // The two key functions are: 1) to get all the names of the Syndicate items and their platinum values to see where to spend Standing one
 //                            2) to get all the items from Varzia relics to see where to spend Aya on.
+//
+//
+//
+// Functions to get the items into files:
+//           getAllSyndicateItems([], true);
+// 			 getAllRelicDropNamesWiki([], { is_save_file: false, file_name: 'file_name.json' });
+//
+// Functions to read the files to get the orders of the specified relics:
+// 			 getAllSyndicateItemOrders([], true);
+// 			 getAllCurrentVarziaRelicDropsOrders('open_file_name.json', { is_save_file: false, file_name: 'file_name.json' });
+//
+// I would recommend to use the files functions once and read from it to get the orders so you don't have to overload the Wiki website.
+//
 
 const fs = require('fs');
 const api = require('./api');
-
 // All Puppeteer imports
 const puppeteer = require('puppeteer-extra');
 // add stealth plugin and use defaults (all evasion techniques)
@@ -73,6 +85,7 @@ async function pageInterception(page) {
 	});
 }
 
+// Syndicate Page Stuff
 /**
  * Function which opens the Syndicate Wiki page of each Syndicate to get it's items.
  * @param {Array} list_of_syndicates List of all syndicates as strings
@@ -239,6 +252,40 @@ async function getAllSyndicateItemOrders(syndicates, is_save_file = false) {
 	}
 }
 
+// Relics Page Stuff
+/**
+ * Function which opens the page of each relic and the item's the relic drops.
+ * @param {Array} list_of_relics_names List of all relic names as strings
+ * @param {Boolean} saveFile Boolean to save the results or not
+ * @returns {Array} Array containing all the items dropped from all the relics.
+ */
+async function getAllRelicDropNamesWiki(
+	list_of_relics_names,
+	saveFile = {
+		is_save_file: false,
+		file_name: `${items_folder_dir}Varzia_relics_drop_names.json`,
+	}
+) {
+	let browser = await puppeteer.launch({ headless: false });
+	let result = [];
+
+	for (let relic_name of list_of_relics_names) {
+		let url = `https://warframe.fandom.com/wiki/${relic_name}`;
+		let page = await browser.newPage();
+
+		let arr = await readRelicPageWiki(page, relic_name, url);
+		result = result.concat(arr);
+
+		await page.close();
+	}
+
+	await browser.close();
+	if (saveFile.is_save_file) {
+		fs.writeFileSync(saveFile.file_name, JSON.stringify(result));
+	}
+	return result;
+}
+
 /**
  *
  * @param {any} page  Active Puppeeter Page which has opened the Wiki page.
@@ -286,46 +333,13 @@ async function readRelicPageWiki(page, relic_name, url) {
 	}
 }
 
-/**
- * Function which opens the page of each relic and the item's the relic drops.
- * @param {Array} list_of_relics_names List of all relic names as strings
- * @param {Boolean} saveFile Boolean to save the results or not
- * @returns {Array} Array containing all the items dropped from all the relics.
- */
-async function getAllRelicDropNamesWiki(
-	list_of_relics_names,
-	saveFile = {
-		is_save_file: false,
-		file_name: `${items_folder_dir}Varzia_relics_drop_names.json`,
-	}
-) {
-	let browser = await puppeteer.launch({ headless: false });
-	let result = [];
-
-	for (let relic_name of list_of_relics_names) {
-		let url = `https://warframe.fandom.com/wiki/${relic_name}`;
-		let page = await browser.newPage();
-
-		let arr = await readRelicPageWiki(page, relic_name, url);
-		result = result.concat(arr);
-
-		await page.close();
-	}
-
-	await browser.close();
-	if (saveFile.is_save_file) {
-		fs.writeFileSync(saveFile.file_name, JSON.stringify(result));
-	}
-	return result;
-}
-
 // Add sorting to this
 /**
  * Function to get all Relics drop items' orders
  * @param {String} drops_file_name Name of the file which contains all the names and ducats.
  * @param {*} saveFile Boolean to save the results or not
  */
-async function getAllCurrentVarziaRelicDropsOrders(
+async function getAllRelicDropsOrders(
 	drops_file_name,
 	saveFile = {
 		is_save_file: false,
@@ -448,7 +462,7 @@ async function main() {
 	// 	is_save_file: true,
 	// 	file_name: `${items_folder_dir}Varzia_relics_drop_names.json`,
 	// });
-	await getAllCurrentVarziaRelicDropsOrders(
+	await getAllRelicDropsOrders(
 		`${items_folder_dir}Varzia_relics_drop_names.json`,
 		(saveFile = {
 			is_save_file: true,
@@ -469,10 +483,17 @@ main();
 // 	// 	is_save_file: true,
 // 	// 	file_name: 'Varzia_relic_names.json',
 // 	// });
-// 	getAllCurrentVarziaRelicDropsOrders('Varzia_relic_names.json', {
+// 	getAllRelicDropsOrders('Varzia_relic_names.json', {
 // 		is_save_file: true,
 // 		file_name: 'Varzia_relics_orders.json',
 // 	});
 // }
 
 // unitTesting();
+
+module.exports = {
+	getAllSyndicateItems,
+	getAllSyndicateItemOrders,
+	getAllRelicDropNamesWiki,
+	getAllRelicDropsOrders,
+};
